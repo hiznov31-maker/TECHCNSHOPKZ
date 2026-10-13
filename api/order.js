@@ -1,5 +1,4 @@
 export default async function handler(req, res) {
-  // Разрешаем CORS
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
@@ -27,37 +26,38 @@ export default async function handler(req, res) {
     }
     body = body || {};
 
-    const token = process.env.TG_BOT_TOKEN || '8729653716:AAGqgTYvVTF693QmG_lV-9wu3MzGpnFUXKA';
-    const chatId = process.env.TG_CHAT_ID || '7903288262';
+    // Очищаем токен от возможных пробелов и спецсимволов
+    const rawToken = process.env.TG_BOT_TOKEN || '8729653716:AAGqgTYvVTF693QmG_lV-9wu3MzGpnFUXKA';
+    const token = rawToken.trim();
+    const chatId = (process.env.TG_CHAT_ID || '7903288262').trim();
 
-    // Вытаскиваем любые возможные названия полей с фронтенда
     const orderNo = body.orderNo || body.order_id || body.order || '—';
     const item = body.item || body.product || body.title || '—';
     const total = body.total || body.price || body.amount || '—';
     const name = body.name || body.username || '—';
     const contact = body.contact || body.phone || body.telegram || '—';
 
-    const text = `🛍️ NEW ORDER!\n\n` +
-                 `Order: ${orderNo}\n` +
-                 `Item: ${item}\n` +
-                 `Total: ${total}\n` +
-                 `Name: ${name}\n` +
-                 `Contact: ${contact}`;
+    const text = `🛍️ НОВЫЙ ЗАКАЗ С САЙТА!\n\n` +
+                 `Заказ: ${orderNo}\n` +
+                 `Товар: ${item}\n` +
+                 `Сумма: ${total}\n` +
+                 `Имя: ${name}\n` +
+                 `Контакты: ${contact}`;
 
-    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const tgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id: String(chatId),
+        chat_id: chatId,
         text: text
       })
     });
 
-    const data = await response.json();
+    const tgData = await tgRes.json();
 
-    if (!data.ok) {
-      console.error('Telegram API rejected:', data);
-      return res.status(400).json({ error: data.description || 'Telegram Error', tg_data: data });
+    if (!tgData.ok) {
+      console.error('Telegram API rejection:', tgData);
+      return res.status(400).json({ error: tgData.description || 'Telegram Error', tg_data: tgData });
     }
 
     return res.status(200).json({ success: true });
