@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Админка наличия</title>
+<style>
+:root{--bg:#120c0b;--surface:#1b1312;--ink:#f4ede6;--muted:#a79a92;--line:#3a2b29;--accent:#ffcf3d;--ok:#7bd49a;--bad:#ff8a80;color-scheme:dark}
+[hidden]{display:none!important}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;padding:16px}
+.wrap{max-width:760px;margin:0 auto;display:grid;gap:14px}h1{font-size:22px;margin:0}p{margin:0;color:var(--muted)}
+input[type=password],input[type=text]{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%;min-width:0}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--ink);padding:9px 12px}
+button.primary{background:var(--accent);color:#1a1204;border-color:var(--accent);font-weight:600}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px}
+.row{display:grid;gap:8px}.name{font-weight:600}.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg button[aria-pressed=true].in{background:var(--ok);color:#08210f;border-color:var(--ok);font-weight:700}
+.seg button[aria-pressed=true].order{background:var(--accent);color:#1a1204;border-color:var(--accent);font-weight:700}
+.seg button[aria-pressed=true].out{background:var(--bad);color:#2a0a07;border-color:var(--bad);font-weight:700}
+.msg{min-height:1.3em;font-size:13px}.msg.ok{color:var(--ok)}.msg.err{color:var(--bad)}.top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.saved{font-size:12px;color:var(--ok);min-height:1em}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px}.tabs button[aria-pressed=true]{background:var(--accent);color:#1a1204;border-color:var(--accent);font-weight:700}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.grid2 label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+input[type=number]{font:inherit;font-size:16px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%;min-width:0}
+.out{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}.out div{border:1px solid var(--line);border-radius:8px;padding:10px;display:grid;gap:2px}.out small{color:var(--muted);font-size:12px}.out b{font-size:18px;font-variant-numeric:tabular-nums}
+.out .hi{border-color:var(--accent)}.out .neg b{color:var(--bad)}.warnp{color:var(--bad);font-size:13px;margin:0}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}tr.cur td{color:var(--accent);font-weight:600}
+</style></head><body><div class="wrap">
+<div class="top"><h1>Наличие моделей</h1><button id="out" type="button" hidden>Выйти</button></div>
+<form id="login" class="card"><p>Введите пароль администратора.</p><input type="password" id="pw" autocomplete="current-password" placeholder="Пароль"><button class="primary" type="submit">Войти</button><div class="msg" id="lmsg" role="status"></div></form>
+<div id="app" hidden class="wrap">
+<div class="tabs"><button type="button" id="tS" aria-pressed="true">Наличие</button><button type="button" id="tC" aria-pressed="false">Калькулятор закупки</button></div>
+<div id="tabStock" class="wrap"><div class="msg" id="warn"></div><p>Нажмите нужный статус. Комментарий (цвета, память) сохраняется кнопкой «Сохранить» или Enter. Сайт обновится за несколько секунд.</p><div id="list" class="wrap"></div></div>
+<div id="tabCalc" class="wrap" hidden><div class="card"><p>Введите закупку в юанях, остальное запомнится в этом браузере. Считает по формуле: (юани × курс × (1 + наценка) + доставка), округление до 1000 ₸.</p>
+<div class="grid2"><label>Закупка, ¥<input type="number" step="any" min="0" id="cCny" inputmode="decimal"></label><label>Курс, ₸ за ¥<input type="number" step="any" min="0" id="cRate" inputmode="decimal"></label><label>Доставка, ₸<input type="number" step="any" min="0" id="cShip" inputmode="decimal"></label><label>Наценка, %<input type="number" step="any" min="0" id="cMk" inputmode="decimal"></label><label>Цена OLX, ₸ (необязательно)<input type="number" step="any" min="0" id="cOlx" inputmode="decimal"></label><label>Ниже рынка, %<input type="number" step="any" min="0" id="cUnder" inputmode="decimal"></label></div></div>
+<div id="cRes" class="wrap"></div></div>
+</div>
+</div><script>
+var MODELS=[["x7ultra", "Oppo Find X7 Ultra"], ["x14u", "Xiaomi 14 Ultra"], ["x14", "Xiaomi 14"], ["x13u", "Xiaomi 13 Ultra"], ["x13pro", "Xiaomi 13 Pro"], ["x13", "Xiaomi 13"], ["x12su", "Xiaomi 12S Ultra"], ["x11u", "Xiaomi 11 Ultra"], ["x10u", "Xiaomi 10 Ultra"], ["civi4pro", "Xiaomi Civi 4 Pro"], ["magic7", "Honor Magic 7 Pro"], ["pura70u", "Huawei Pura 70 Ultra"], ["mate50", "Huawei Mate 50"], ["p40pro", "Huawei P40 Pro"], ["x7", "Oppo Find X7"], ["x6pro", "Oppo Find X6 Pro"], ["x6", "Oppo Find X6"], ["x80pro", "Vivo X80 Pro"]];var pw="",stock={};
+function $(i){return document.getElementById(i)}
+function api(body){body.password=pw;return fetch("/api/admin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(function(r){return r.json().then(function(j){j._status=r.status;return j;});});}
+function render(){
+  var h="";MODELS.forEach(function(m){var x=stock[m[0]]||{s:"order",note:""};
+    h+='<div class="card" data-id="'+m[0]+'"><div class="name">'+m[1]+'</div><div class="seg">'+
+    [["in","В наличии"],["order","Под заказ"],["out","Нет"]].map(function(o){return '<button type="button" class="'+o[0]+'" data-s="'+o[0]+'" aria-pressed="'+(x.s===o[0])+'">'+o[1]+'</button>';}).join("")+
+    '</div><div class="row"><input type="text" maxlength="140" placeholder="Комментарий, например: чёрный 12/256, серый 16/512" value="'+String(x.note||"").replace(/"/g,"&quot;")+'"><button type="button" data-save="1">Сохранить комментарий</button></div><div class="saved"></div></div>';});
+  $("list").innerHTML=h;
+}
+function save(id,s,note,card){
+  var sv=card.querySelector(".saved");sv.textContent="Сохраняю...";sv.style.color="";
+  api({action:"set",id:id,s:s,note:note}).then(function(j){
+    if(j.stock){stock=j.stock;sv.style.color="";sv.textContent="Сохранено";card.querySelectorAll(".seg button").forEach(function(b){b.setAttribute("aria-pressed",b.dataset.s===s);});}
+    else{sv.style.color="var(--bad)";sv.textContent=j.error==="storage_not_connected"?"Не сохранено: хранилище не подключено в Vercel (Storage → Upstash Redis), затем Redeploy":"Не удалось сохранить ("+(j.error||j._status)+")";}
+  }).catch(function(){sv.style.color="var(--bad)";sv.textContent="Нет связи, попробуйте ещё раз";});
+}
+document.addEventListener("click",function(e){
+  var b=e.target.closest("button");if(!b)return;var card=b.closest(".card[data-id]");if(!card)return;
+  var id=card.dataset.id,note=card.querySelector("input").value;
+  if(b.dataset.s){save(id,b.dataset.s,note,card);}
+  else if(b.dataset.save){var cur=(stock[id]||{s:"order"}).s;save(id,cur,note,card);}
+});
+document.addEventListener("keydown",function(e){if(e.key==="Enter"&&e.target.matches(".card[data-id] input")){var card=e.target.closest(".card");var id=card.dataset.id;save(id,(stock[id]||{s:"order"}).s,e.target.value,card);}});
+function enter(j){
+  if(j.error==="bad_password"){$("lmsg").className="msg err";$("lmsg").textContent="Неверный пароль.";try{sessionStorage.removeItem("ap");}catch(x){}return;}
+  if(j.error==="no_password_configured"){$("lmsg").className="msg err";$("lmsg").textContent="Пароль не задан в Vercel (ADMIN_PASSWORD, минимум 8 символов).";return;}
+  if(!j.stock){$("lmsg").className="msg err";$("lmsg").textContent="Ошибка сервера: "+(j.error||j._status);return;}
+  stock=j.stock;$("login").hidden=true;$("app").hidden=false;$("out").hidden=false;
+  try{sessionStorage.setItem("ap",pw);}catch(x){}
+  if(j.kv===false){$("warn").className="msg err";$("warn").textContent="Хранилище не подключено в Vercel (Storage → Upstash Redis). Пока сохранять нельзя.";}
+  render();
+}
+$("login").addEventListener("submit",function(e){e.preventDefault();pw=$("pw").value;$("lmsg").className="msg";$("lmsg").textContent="Проверяю...";api({action:"get"}).then(enter).catch(function(){$("lmsg").className="msg err";$("lmsg").textContent="Нет связи с сервером.";});});
+$("out").addEventListener("click",function(){try{sessionStorage.removeItem("ap");}catch(x){}location.reload();});
+try{var sp=sessionStorage.getItem("ap");if(sp){pw=sp;api({action:"get"}).then(enter);}}catch(x){}
+
+function $n(i){var v=parseFloat($(i).value);return isFinite(v)?v:0}
+function fm(n){return Math.round(n).toLocaleString("ru-RU")+" ₸"}
+function rd(x){return Math.round(x/1000)*1000}
+function pr(cny,mk,rate,ship){return rd(cny*rate*(1+mk/100)+ship)}
+function calc(){
+  var ids=["cRate","cShip","cMk","cUnder"];try{ids.forEach(function(i){localStorage.setItem("calc_"+i,$(i).value);});}catch(x){}
+  var cny=$n("cCny"),rate=$n("cRate"),ship=$n("cShip"),mk=$n("cMk"),olx=$n("cOlx"),und=$n("cUnder"),el=$("cRes");
+  if(!(cny>0)||!(rate>0)){el.innerHTML='<p>Введите закупку в юанях и курс.</p>';return;}
+  var buy=cny*rate,cost=buy+ship,price=pr(cny,mk,rate,ship),capped=false,cap=0;
+  if(olx>0){cap=rd(olx*(1-und/100));if(cap<price){price=cap;capped=true;}}
+  var profit=price-cost,pct=cost?profit/cost*100:0;
+  var h='<div class="out"><div><small>Закупка в тенге</small><b>'+fm(buy)+'</b></div><div><small>Себестоимость с доставкой</small><b>'+fm(cost)+'</b></div><div class="hi"><small>Цена на сайте</small><b>'+fm(price)+'</b></div><div class="'+(profit<0?"neg":"")+'"><small>Прибыль</small><b>'+fm(profit)+' ('+Math.round(pct)+'%)</b></div></div>';
+  if(capped)h+='<p>Цена ограничена рынком OLX: '+fm(cap)+'. Без ограничения было бы '+fm(pr(cny,mk,rate,ship))+'.</p>';
+  if(profit<0)h+='<p class="warnp">Цена ниже себестоимости, это убыток.</p>';
+  h+='<div class="card"><table><thead><tr><th>Наценка</th><th>Цена</th><th>Прибыль</th></tr></thead><tbody>';
+  [30,40,50,60,70,80].forEach(function(k){var p=pr(cny,k,rate,ship);h+='<tr'+(k===mk?' class="cur"':'')+'><td>'+k+'%</td><td>'+fm(p)+'</td><td>'+fm(p-cost)+'</td></tr>';});
+  el.innerHTML=h+'</tbody></table></div>';
+}
+["cCny","cRate","cShip","cMk","cOlx","cUnder"].forEach(function(i){$(i).addEventListener("input",calc);});
+try{["cRate","cShip","cMk","cUnder"].forEach(function(i){var v=localStorage.getItem("calc_"+i);if(v!==null)$(i).value=v;});}catch(x){}
+function tab(c){$("tabStock").hidden=c;$("tabCalc").hidden=!c;$("tS").setAttribute("aria-pressed",!c);$("tC").setAttribute("aria-pressed",c);if(c)calc();}
+$("tS").addEventListener("click",function(){tab(false)});$("tC").addEventListener("click",function(){tab(true)});
+</script></body></html>
