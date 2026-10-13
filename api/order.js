@@ -4,20 +4,17 @@ export default async function handler(req, res) {
   }
 
   const { orderNo, item, total, name, contact } = req.body || {};
-  const token = process.env.TG_BOT_TOKEN;
-  const chatId = process.env.TG_CHAT_ID;
+  
+  // Прямое указание токена и Chat ID (если process.env пуст)
+  const token = process.env.TG_BOT_TOKEN || '8729653716:AAGqgTYvVTF693QmG_lV-9wu3MzGpnFUXKA';
+  const chatId = process.env.TG_CHAT_ID || '7903288262';
 
-  if (!token || !chatId) {
-    console.error('Missing ENV variables:', { hasToken: !!token, hasChatId: !!chatId });
-    return res.status(500).json({ error: 'Telegram environment variables missing' });
-  }
-
-  const message = `🛍️ Новый заказ!\n\n` +
-                  `📦 Заказ: ${orderNo || '—'}\n` +
-                  `📱 Товар: ${item || '—'}\n` +
-                  `💰 Сумма: ${total || '—'}\n` +
-                  `👤 Имя: ${name || '—'}\n` +
-                  `📞 Контакты: ${contact || '—'}`;
+  const message = `🛍️ **НОВЫЙ ЗАКАЗ С САЙТА!**\n\n` +
+                  `📋 **№ Заказа:** ${orderNo || '—'}\n` +
+                  `📱 **Товар:** ${item || '—'}\n` +
+                  `💰 **Сумма:** ${total || '—'}\n` +
+                  `👤 **Имя:** ${name || '—'}\n` +
+                  `📞 **Контакты:** ${contact || '—'}`;
 
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -25,19 +22,31 @@ export default async function handler(req, res) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: chatId,
-        text: message
+        text: message,
+        parse_mode: 'Markdown'
       })
     });
 
     const data = await response.json();
+    
     if (!data.ok) {
-      console.error('Telegram API Error response:', data);
-      return res.status(500).json({ error: data.description || 'Telegram API Error' });
+      // Запасной вариант простым текстом без Markdown
+      const fallback = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: message.replace(/\*/g, '')
+        })
+      });
+      const fallbackData = await fallback.json();
+      if (!fallbackData.ok) {
+        return res.status(500).json({ error: fallbackData.description });
+      }
     }
 
     return res.status(200).json({ success: true });
   } catch (error) {
-    console.error('Server catch error:', error.message);
     return res.status(500).json({ error: error.message });
   }
 }
