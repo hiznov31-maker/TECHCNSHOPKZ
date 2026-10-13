@@ -1662,7 +1662,7 @@ window.PhoneExperience = window.PhoneExperience || { summary: function () { retu
     btn.disabled=true;msg.textContent="Отправляем...";
     var payload={orderNo:document.getElementById("coNo").textContent,item:document.getElementById("coItem").textContent,total:document.getElementById("coSum").textContent,name:document.getElementById("coName").value.trim(),contact:contact,text:document.getElementById("coTg").getAttribute("data-text")||"",hp:document.getElementById("coHp").value};
     var ctl=window.AbortController?new AbortController():null,to=setTimeout(function(){if(ctl)ctl.abort();},12000);
-    fetch("/.netlify/functions/order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:ctl?ctl.signal:undefined})
+    fetch("/api/order",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload),signal:ctl?ctl.signal:undefined})
       .then(function(r){if(!r.ok)throw new Error("http "+r.status);return r.json().catch(function(){return {};});})
       .then(function(){msg.className="coMsg ok";msg.textContent="Заявка принята. Мы напишем вам в Telegram или по телефону. Оплачивать можно после нашего подтверждения.";btn.textContent="Заявка отправлена";if(window.track)window.track("order_submit");try{localStorage.setItem("coContact",contact);}catch(x){}})
       .catch(function(){btn.disabled=false;msg.className="coMsg err";msg.textContent="Не удалось отправить заявку. Нажмите «Открыть Telegram» ниже: заказ уже вписан в сообщение.";if(window.track)window.track("order_form_error");})
